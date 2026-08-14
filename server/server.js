@@ -105,4 +105,5 @@ server.listen(PORT, () => {
   console.log(`SkillSwap server running on port ${PORT}`);
 });
 
-module.exports = app;
+// module.exports = app;
+export default app;
