@@ -25,26 +25,55 @@ import recommendationRoutes from "./routes/recommendationRoutes.js";
 
 import Session from "./models/Session.js";
 import { createNotification } from "./utils/notify.js";
-import dns from 'dns';
-dns.setServers(['8.8.8.8', '8.8.4.4']);
+import dns from "dns";
+
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 dotenv.config();
 connectDB();
 
 const app = express();
 const server = http.createServer(app);
-const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
 
-initSocket(server, clientUrl);
+// Multiple Origins Allowed (Localhost + Netlify Frontend)
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://dynamic-mousse-50260f.netlify.app",
+  process.env.CLIENT_URL,
+].filter(Boolean);
 
-app.use(cors({ origin: clientUrl, credentials: true }));
+initSocket(server, allowedOrigins);
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Allow all during production testing
+      }
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(morgan("dev"));
 
+// 🟢 ROOT ROUTE (Fixes "Route not found - /" Error)
+app.get("/", (req, res) => {
+  res.status(200).json({
+    status: "success",
+    message: "SkillSwap API is running live on Vercel! 🚀",
+  });
+});
+
+// 🟢 HEALTH CHECK ROUTE
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", message: "SkillSwap API running" });
 });
 
+// API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/skills", skillRoutes);
@@ -60,10 +89,11 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/certificates", certificateRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 
+// Error Middleware
 app.use(notFound);
 app.use(errorHandler);
 
-// Send session reminders ~30-45 minutes before scheduled time, checked every 5 minutes.
+// Cron job for local development (Vercel serverless skips non-HTTP crons gracefully)
 cron.schedule("*/5 * * * *", async () => {
   try {
     const now = new Date();
@@ -99,11 +129,12 @@ cron.schedule("*/5 * * * *", async () => {
   }
 });
 
-const PORT = process.env.PORT || 5000;
+// Local listening check (Vercel uses exports)
+if (process.env.NODE_ENV !== "production") {
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, () => {
+    console.log(`SkillSwap server running on port ${PORT}`);
+  });
+}
 
-server.listen(PORT, () => {
-  console.log(`SkillSwap server running on port ${PORT}`);
-});
-
-// module.exports = app;
 export default app;
