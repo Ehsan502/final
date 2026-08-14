@@ -35,9 +35,10 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
-// Multiple Origins Allowed (Localhost + Netlify Frontend)
+// 🟢 Updated Allowed Origins (Localhost + Both Netlify URLs)
 const allowedOrigins = [
   "http://localhost:5173",
+  "https://finalap.netlify.app", // 👈 Added your current active Netlify domain
   "https://dynamic-mousse-50260f.netlify.app",
   process.env.CLIENT_URL,
 ].filter(Boolean);
@@ -60,7 +61,7 @@ app.use(
 app.use(express.json());
 app.use(morgan("dev"));
 
-// 🟢 ROOT ROUTE (Fixes "Route not found - /" Error)
+// 🟢 ROOT ROUTE
 app.get("/", (req, res) => {
   res.status(200).json({
     status: "success",
@@ -93,7 +94,7 @@ app.use("/api/recommendations", recommendationRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-// Cron job for local development (Vercel serverless skips non-HTTP crons gracefully)
+// Cron job for local development
 cron.schedule("*/5 * * * *", async () => {
   try {
     const now = new Date();
@@ -129,7 +130,7 @@ cron.schedule("*/5 * * * *", async () => {
   }
 });
 
-// Local listening check (Vercel uses exports)
+// Local listening check
 if (process.env.NODE_ENV !== "production") {
   const PORT = process.env.PORT || 5000;
   server.listen(PORT, () => {
